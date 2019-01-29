@@ -1,14 +1,77 @@
+import threading
 import time
 
 import psycopg2
 import os
+class StartAllTasks(object):
+    def __init__(self,path):
+        self.path = path
+        self.province_city_dict = {}
+        self.path_list = []
+        self.my_tesk_province = ["zfcg",'Python_zfcg']
+        self.province_list = []
+        os.chdir(self.path)
+
+    def filter_files(self,olist):
+        # 文件过滤
+        newlist = []
+        if "__init__.py" in olist:
+            olist.remove("__init__.py")
+        if ".idea" in olist:
+            olist.remove(".idea")
+        if "__pycache__" in olist:
+            olist.remove("__pycache__")
+        if "task.py" in olist:
+            olist.remove("task.py")
+        if "test.sh" in olist:
+            olist.remove("test.sh")
+        if "zfcgstart.py" in olist:
+            olist.remove("zfcgstart.py")
+        for o in olist:
+            if '.py' in o:
+                newlist.append(o)
+
+        return newlist
+
+    def get_city_names(self,path):
+        # 获得所有城市名
+        self.province_city_dict[path] = []
+        city_list_temp = os.listdir(os.getcwd()+'/'+path)
+        # print(city_list_temp)
+        self.province_city_dict[path] = self.filter_files(city_list_temp)
+        self.province_city_dict[path] = self.filter_files(self.province_city_dict[path])
+        return self.province_city_dict
+
+    def start_tasks(self,path):
+        os_path = os.getcwd()
+        threads = []
+        os.chdir(path)
+        for i in self.province_city_dict[path]:
+            t = threading.Thread(target=self.start_s, args=(i,))
+            threads.append(t)
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        os.chdir(os_path)
+
+    def start_s(self,filename):
+        # print(filename)
+        os.system("python3 %s" % filename)
+
+    def get_province_names(self):
+        temp = os.listdir(os.getcwd())
+        for name in temp:
+            if name in self.my_tesk_province:
+                self.province_list.append(name)
+        return self.province_list
 
 city = input("查询的城市：")
 os.chdir(os.path.dirname(os.getcwd()))
 os.chdir(city)
 current_doculist = os.listdir()
 
-con = psycopg2.connect(user='postgres',password='since2015',host='192.168.3.171',port="5432",database=city)
+con = psycopg2.connect(user='postgres',password='since2015',host='192.168.3.171',port="5432",database='anbang')
 
 cur = con.cursor()
 sql = "select * from pg_tables"

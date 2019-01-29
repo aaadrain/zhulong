@@ -1,0 +1,176 @@
+
+create table all_gg as (select * from gg limit 0)
+--as 是复制表结构和数据，当limit 0 时，仅仅复制表结构
+
+create table all_liubiao_gg (check (ggtype = '流标公告')) INHERITS (all_gg);
+-- 创建继承的字表。必须要有约束条件，即：CHECK (.. )
+
+create table all_qita_gg (check (ggtype = '其他公告')) INHERITS (all_gg);
+create table all_zhaobiao_gg (check (ggtype = '招标公告')) INHERITS (all_gg);
+select ggtype,count(*) from gg group by ggtype
+
+create or replace function all_gg_insert_trigger()   --创建或重新定义函数
+returns TRIGGER
+as $$
+begin
+if (NEW.ggtype = '变更公告') THEN
+    insert into all_biangeng_gg values(NEW.*);
+elsif (NEW.ggtype = '流标公告') THEN
+    insert into all_liubiao_gg values(NEW.*);
+elsif (NEW.ggtype = '其他公告') THEN
+    insert into all_qita_gg values (NEW.*);
+elsif (NEW.ggtype='招标公告') then 
+    insert into all_zhaobiao_gg values (NEW.*);
+elsif (NEW.ggtype = '中标公告') THEN
+    insert into all_zhongbiao_gg values (NEW.*);
+else
+    raise exception 'ggtype is not defined ,please check!';
+    end if ;
+    RETURN NULL;
+end;
+$$
+LANGUAGE plpgsql;
+
+create trigger trigger_all_gg_insert
+    before insert on all_gg
+    for each row execute procedure all_gg_insert_trigger();
+
+alter table test1 add CONSTRAINT name_unique unique(name)  --增加约束需要命名
+
+
+-- select ggstart_time,count(*) filter(where ggstart_time::date >= date '2019-01-01')   -- filter过滤使用方法
+-- from gg where ggstart_time >= '2019-01-01'
+-- group by ggstart_time
+-- order by ggstart_time desc
+--select * from (gg as g1 ,select href,count(*) from all_gg group by href as g2) where g1.href=g2.href
+--select href,count(*) from all_gg group by href
+--delete from (select href,name,ggstart_time,count(*) from all_gg group by href,name,ggstart_time having count(*)>1)  -- 查询重复行
+delete from all_gg where ctid not in (select min(ctid) from all_gg group by href)  --删除重复行
+
+drop table if EXISTS products;
+CREATE TABLE "products" (
+     "id" varchar(10) COLLATE "default",
+     "name" text COLLATE "default",市
+     "price" numeric,
+     "uid" varchar COLLATE "default",
+     "type" varchar COLLATE "default"
+ )
+WITH (OIDS=FALSE);  --对新建表的约束，默认就是oids=False，不创建oid
+
+
+INSERT INTO "products" VALUES ('0006', 'iPhone X', '9600', null, '电器');
+INSERT INTO "products" VALUES ('0012', '电视', '3299', '4', '电器');
+INSERT INTO "products" VALUES ('0004', '辣条', '5.6', '4', '零食');
+INSERT INTO "products" VALUES ('0007', '薯条', '7.5', '1', '零食');
+INSERT INTO "products" VALUES ('0009', '方便面', '3.5', '1', '零食');
+INSERT INTO "products" VALUES ('0005', '铅笔', '7', '4', '文具');
+INSERT INTO "products" VALUES ('0014', '作业本', '1', null, '文具');
+INSERT INTO "products" VALUES ('0001', '鞋子', '27', '2', '衣物');
+INSERT INTO "products" VALUES ('0002', '外套', '110.9', '3', '衣物');
+INSERT INTO "products" VALUES ('0013', '围巾', '93', '5', '衣物');
+INSERT INTO "products" VALUES ('0008', '香皂', '17.5', '2', '日用品');
+INSERT INTO "products" VALUES ('0010', '水杯', '27', '3', '日用品');
+INSERT INTO "products" VALUES ('0015', '洗发露', '36', '1', '日用品');
+INSERT INTO "products" VALUES ('0011', '毛巾', '15', '1', '日用品');
+INSERT INTO "products" VALUES ('0003', '手表', '1237.55', '5', '电器');
+INSERT INTO "products" VALUES ('0016', '绘图笔', '15', null, '文具');
+INSERT INTO "products" VALUES ('0017', '汽水', '3.5', null, '零食');
+
+
+INSERT INTO "products" VALUES ('0006', 'iPhone X', '9600', null, '电器'),
+('0012', '电视', '3299', '4', '电器'),
+('0004', '辣条', '5.6', '4', '零食'),
+('0007', '薯条', '7.5', '1', '零食'),
+('0009', '方便面', '3.5', '1', '零食'),
+('0005', '铅笔', '7', '4', '文具'),
+('0014', '作业本', '1', null, '文具'),
+('0001', '鞋子', '27', '2', '衣物'),
+('0002', '外套', '110.9', '3', '衣物'),
+('0013', '围巾', '93', '5', '衣物'),
+('0008', '香皂', '17.5', '2', '日用品'),
+('0010', '水杯', '27', '3', '日用品'),
+('0015', '洗发露', '36', '1', '日用品'),
+('0011', '毛巾', '15', '1', '日用品'),
+('0003', '手表', '1237.55', '5', '电器'),
+('0016', '绘图笔', '15', null, '文具'),
+('0017', '汽水', '3.5', null, '零食'),
+('0018', 'ipad', '3335', 5, '电器'),
+('0019', 'ipad2', '3555', 6, '电器'),
+('0020', 'ipad3', '5555', 7, '电器'),
+
+
+
+--语句级触发器
+create or replace function log_trigger_func ()
+returns trigger as $$
+begin 
+    insert into log_work values(now(),user,TG_OP);
+    return null;
+end;
+$$
+LANGUAGE "plpgsql";
+
+create trigger log_work_trigger
+    after insert or delete or update on products    
+    for statement execute procedure log_trigger_func ();
+insert into products values('0019','ipad2','3555','','电器'),('0020','ipad3','5555','','电器')
+
+--插入json类型数据
+with a as (select uid,'{"'||type||'":"'||name||'"}' as type_json from products )
+,b as (select * from a)
+update products set type_json = b.type_json::json
+from b
+where products.uid = b.uid
+
+
+--json 数据的查询
+with a as (select name,type, type_json from products )
+select name,type_json::json ->> a.type from a;
+
+--插入array类型的数据
+with a as (select uid,array[type,name,uid] as array_text from products)
+update products set arry_text = a.array_text 
+from a
+where products.uid =a.uid
+
+--array数据查询
+select arry_text[3] from products;    []类似于python，不过是从1开始的。
+
+--将json数据增加到array格式中，需要将json装成text才行。
+with a as (select uid,type_json,array[uid,type_json::text] as json_array from products)
+update products set array_json_text=a.json_array
+from a 
+where products.uid = a.uid
+
+--查询array数据
+select array_json_text[2] from products;
+--查询array数据中的json数据，需要转换数据类型
+select array_json_text[2]::json->>type from products;
+
+--数组的聚合函数
+select id,array_agg(value) from test03 group by id
+
+--数组的操作
+select  array_length(array[[1,2,3,4],[1,3,4],[2,3,4,5]],2)
+select ceil(random()*10)
+insert into test03 values(ceil(random()*10),ceil(random()*100))
+select array_remove(array[1,2,3,4,5,1,2,3,4],2)
+select array_to_string(array[1,2,3],'-')
+select array_to_string(array_json_text,'-') from products;
+select string_to_array(arry_text::text, ',')  from products
+
+
+创建触发器执行函数
+create or replace function row_opr_trigger_func ()
+returns trigger as $$    --返回一定是触发器 trigger
+begin
+insert into log_work(opr,opr_user,opr_time) values(TG_OP,user,now());    --$$  ~~  $$ 里面的 ；不能少
+return null;     --操作数据库，没有返回值
+end; 
+$$
+language "plpgsql";
+
+
+
+create extension xxxx
+

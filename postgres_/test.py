@@ -1,82 +1,37 @@
+from PIL import Image
+import pytesseract
 import os
-import traceback
-import logging
-import psycopg2
-import sys
+# print(os.getcwd())
+# img = Image.open('1.png')
+# text = pytesseract.image_to_string(img,lang="eng")
+# print(text)
+from selenium import webdriver
+url = "http://czj.dg.gov.cn/dggp/portal/topicView.do?method=view&id=51530072"
+d = webdriver.Chrome()
+d.maximize_window()
+d.get(url)
+p=3
+d.execute_script("javascript:document.forms.topicChrList.topicChrList_p.value='%s';document.forms.topicChrList.setAttribute('action','');document.forms.topicChrList.setAttribute('method','post');document.forms.topicChrList.submit()"%p)
+d.find_element_by_xpath('//img[@class="yzmimg y"]')
+img = d.find_element_by_xpath("//img[@class='yzmimg y']")
 
-list = os.listdir()
-list.remove(os.path.basename(__file__))
-if "profile" in list:
-    list.remove("profile")
-if "task.py" in list:
-    list.remove("task.py")
-if "__init__.py" in list:
-    list.remove("__init__.py")
-if ".idea" in list:
-    list.remove(".idea")
+location = img.location
+size = img.size
+left = location['x']
+top = location['y']
+right = left + size['width']
+bottom = top + size['height']
 
+d.save_screenshot("full_snap.png")
 
+page_snap_obj = Image.open('full_snap.png')
+# page_snap_obj.show()
+image_obj = page_snap_obj.crop((left,top,right,bottom))
+# image_obj.show()
+# image = Image.open(image_obj)
+image_obj.save("yzm.png")
+yzm_img = Image.open('yzm.png')
+text = pytesseract.image_to_string(image_obj,lang="eng")
 
-
-upname =os.getcwd().split("\\")[-1]
-
-log_filename = upname + ".log"
-logging.basicConfig(filename=log_filename,filemode="a",level=logging.DEBUG)
-
-# 全部爬之前删gg.
-for l in list:
-    name = l.split('.')[0]
-    conp = ["postgres", "since2015", "192.168.3.171", "%s"%upname, "%s"%name]
-    sql = """drop table if exists %s.gg"""%name
-    con = psycopg2.connect(user=conp[0], password=conp[1], host=conp[2], port="5432", database=conp[3])
-    cur = con.cursor()
-    cur.execute(sql)
-    con.commit()
-    cur.close()
-    con.close()
-
-
-arg = sys.argv
-if len(arg) >2:
-    for l in list:
-        try:
-            os.system("python ./%s %d %d %d"%(l,int(arg[1]),int(arg[2]),int(arg[3])))
-        except Exception as e:
-            traceback.print_exc(e)
-            logging.debug(e)
-
-    for l in list:
-        try:
-            os.system("python ./%s %d %d %d"%(l,int(arg[1]),int(arg[2]),int(arg[3])))
-        except Exception as e:
-            logging.debug(e)
-            traceback.print_exc(e)
-
-elif len(arg) == 2:
-    for l in list:
-        try:
-            os.system("python ./%s %d"%(l,int(arg[1])))
-        except Exception as e:
-            logging.debug(e)
-            traceback.print_exc(e)
-    for l in list:
-        try:
-            os.system("python ./%s %d"%(l,int(arg[1])))
-        except Exception as e:
-            logging.debug(e)
-            traceback.print_exc(e)
-
-else:
-    for l in list:
-        try:
-            os.system("python ./%s"%l)
-        except Exception as e:
-            traceback.print_exc(e)
-            logging.debug(e)
-
-    for l in list:
-        try:
-            os.system("python ./%s"%l)
-        except Exception as e:
-            traceback.print_exc(e)
-            logging.debug(e)
+print(text)
+# d.quit()
